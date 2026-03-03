@@ -21,11 +21,54 @@
      @media (max-width: 640px) {
     .row { grid-template-columns: 1fr; }
   }
+     .tiles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 12px 0 16px;
+  }
+  .tile {
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .tile-label {
+    font-size: 13px;
+    opacity: 0.75;
+    margin-bottom: 6px;
+  }
+  .tile-value {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+  .tile-sub {
+    margin-top: 6px;
+    font-size: 12px;
+    opacity: 0.7;
+  }
+
+  @media (max-width: 640px) {
+    .tiles { grid-template-columns: 1fr; }
+  }
   </style>
 </head>
 <body>
   <h1>Rain & Bore Tracker</h1>
+  
+<div class="tiles">
+  <div class="tile">
+    <div class="tile-label">Rain — Year to Date</div>
+    <div class="tile-value" id="tile_rain_ytd">—</div>
+    <div class="tile-sub" id="tile_range">—</div>
+  </div>
 
+  <div class="tile">
+    <div class="tile-label">Bore — Year to Date</div>
+    <div class="tile-value" id="tile_bore_ytd">—</div>
+    <div class="tile-sub">Total usage</div>
+  </div>
+</div>
   <div class="card">
     <h2>Quick Add</h2>
     <div class="row">
