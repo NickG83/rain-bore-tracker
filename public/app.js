@@ -98,6 +98,26 @@ function setEditMode(id) {
   }
 }
 
+function daysSinceLocalYYYYMMDD(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const then = new Date(y, m - 1, d);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.floor((today - then) / 86400000);
+}
+
+function renderDaysSinceRainTile(lastRain) {
+  if (!lastRain.last_date) {
+    $("tile_days_since_rain").textContent = "—";
+    $("tile_last_rain_info").textContent = "No rainfall recorded yet";
+    return;
+  }
+
+  const days = daysSinceLocalYYYYMMDD(lastRain.last_date);
+  $("tile_days_since_rain").textContent = `${days} day${days === 1 ? "" : "s"}`;
+  $("tile_last_rain_info").textContent = `${lastRain.last_date} (${lastRain.last_rain_mm} mm)`;
+}
+
 function clearFormKeepDate() {
   $("rain_mm").value = "";
   $("bore_litres").value = "";
@@ -124,11 +144,13 @@ async function refresh() {
     fetchJson("/api/entries"),
     fetchJson("/api/summary"),
     fetchJson(`/api/tiles?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+    fetchJson("/api/last_rain"),
   ]);
 
   renderTable(entries);
   renderMonthlyChart(summary);
   renderTiles(tiles);
+  renderDaysSinceRainTile(lastRain);
 }
 
 function renderTable(entries) {
