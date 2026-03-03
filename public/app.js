@@ -1,102 +1,175 @@
-let boreLitres = 0;
-const step = 1000;
-let chart;
+// public/app.js
+// Vanilla JS app controller for Rain & Bore Tracker (Pages + D1)
+// Assumes index.html has:
+// - #entry_date, #rain_mm, #bore_litres, #notes
+// - #save_btn, #status
+// - #entries_body, #monthly_chart
+//
+// Note: Chart.js is loaded globally via CDN as `Chart`.
 
+let chart = null;
+
+/** ---------- Utilities ---------- **/
+
+function $(id) {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Missing element #${id}`);
+  return el;
+}
+
+// Reliable YYYY-MM-DD (don’t rely on locale)
 function todayYYYYMMDD() {
-  // en-CA gives YYYY-MM-DD in most browsers
-  return new Date().toLocaleDateString("en-CA");
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
-function setBore(v) {
-  boreLitres = Math.max(0, v);
-  document.getElementById("bore_value").textContent = boreLitres.toLocaleString();
+// Parse numeric inputs that may include commas/spaces
+function parseNumberOrNull(raw) {
+  const cleaned = String(raw ?? "").trim().replace(/,/g, "");
+  if (cleaned === "") return null;
+  const n = Number(cleaned);
+  if (!Number.isFinite(n)) return NaN;
+  return n;
 }
+
+function formatIntWithCommas(n) {
+  return Number(n).toLocaleString();
+}
+
+// Fetch helper that surfaces real errors (HTML, Access redirects, etc.)
+async function fetchJson(url, opts) {
+  const res = await fetch(url, opts);
+  const text = await res.text();
+  const ct = res.headers.get("content-type") || "";
+
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText} - ${text.slice(0, 400)}`);
+  }
+  if (!ct.includes("application/json")) {
+    throw new Error(`Expected JSON but got ${ct} - ${text.slice(0, 400)}`);
+  }
+  return JSON.parse(text);
+}
+
+/** ---------- UI Actions ---------- **/
 
 async function refresh() {
   const [entries, summary] = await Promise.all([
-    fetch("/api/entries").then(r => r.json()),
-    fetch("/api/summary").then(r => r.json()),
+    fetchJson("/api/entries"),
+    fetchJson("/api/summary"),
   ]);
 
-  // table
-  const body = document.getElementById("entries_body");
+  renderTable(entries);
+  renderMonthlyChart(summary);
+}
+
+function renderTable(entries) {
+  const body = $("entries_body");
   body.innerHTML = "";
-  entries.slice(0, 15).forEach(e => {
+
+  entries.slice(0, 15).forEach((e) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${e.entry_date}</td>
       <td class="num">${e.rain_mm ?? ""}</td>
-      <td class="num">${e.bore_litres ? e.bore_litres.toLocaleString() : ""}</td>
-      <td class="num">${e.pump_minutes ?? ""}</td>
+      <td class="num">${e.bore_litres ? formatIntWithCommas(e.bore_litres) : ""}</td>
       <td>${e.notes ?? ""}</td>
     `;
     body.appendChild(tr);
   });
+
   if (entries.length === 0) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="5">No entries yet.</td>`;
+    tr.innerHTML = `<td colspan="4">No entries yet.</td>`;
     body.appendChild(tr);
   }
+}
 
-  // chart (bore shown as kL)
-  const labels = summary.map(x => x.month);
-  const rain = summary.map(x => Number(x.rain_mm_total || 0));
-  const boreKL = summary.map(x => Number(x.bore_litres_total || 0) / 1000);
+function renderMonthlyChart(summary) {
+  const labels = summary.map((x) => x.month);
+  const rain = summary.map((x) => Number(x.rain_mm_total || 0));
+  const boreKL = summary.map((x) => Number(x.bore_litres_total || 0) / 1000);
 
-  const ctx = document.getElementById("monthly_chart");
+  const canvas = $("monthly_chart");
+
   if (chart) chart.destroy();
-  chart = new Chart(ctx, {
+  chart = new Chart(canvas, {
     type: "bar",
     data: {
       labels,
       datasets: [
         { label: "Rain (mm)", data: rain },
         { label: "Bore (kL)", data: boreKL },
-      ]
+      ],
     },
-    options: { responsive: true }
+    options: { responsive: true },
   });
 }
 
 async function saveEntry() {
-  const status = document.getElementById("status");
-  const btn = document.getElementById("save_btn");
+  const status = $("status");
+  const btn = $("save_btn");
+
   btn.disabled = true;
   status.textContent = "Saving...";
 
   try {
-    const entry_date = document.getElementById("entry_date").value;
-    const rain_mm_raw = document.getElementById("rain_mm").value.trim();
-    const pump_raw = document.getElementById("pump_minutes").value.trim();
-    const notes = document.getElementById("notes").value.trim();
+    const entry_date = $("entry_date").value;
+
+    const rainRaw = $("rain_mm").value;
+    const boreRaw = $("bore_litres").value;
+    const notesRaw = $("notes").value;
+
+    const rain_mm = parseNumberOrNull(rainRaw);
+    const bore_litres_num = parseNumberOrNull(boreRaw);
+
+    if (!entry_date) throw new Error("Date is required.");
+
+    if (Number.isNaN(rain_mm)) throw new Error("Rain (mm) must be a number.");
+    if (Number.isNaN(bore_litres_num)) throw new Error("Bore usage must be a number (litres).");
+
+    // Convert bore to integer litres (null if empty)
+    const bore_litres =
+      bore_litres_num === null ? null : Math.round(bore_litres_num);
+
+    if (bore_litres !== null && bore_litres < 0) {
+      throw new Error("Bore usage must be a positive number (litres).");
+    }
+    if (rain_mm !== null && rain_mm < 0) {
+      throw new Error("Rain (mm) must be a positive number.");
+    }
+
+    // Optional guard: disallow totally empty entries
+    if (rain_mm === null && (bore_litres === null || bore_litres === 0) && notesRaw.trim() === "") {
+      throw new Error("Enter rain or bore (or add a note) before saving.");
+    }
 
     const payload = {
       entry_date,
-      rain_mm: rain_mm_raw === "" ? null : Number(rain_mm_raw),
-      bore_litres: boreLitres === 0 ? null : boreLitres,
-      pump_minutes: pump_raw === "" ? null : Number(pump_raw),
+      rain_mm,
+      bore_litres: bore_litres === 0 ? null : bore_litres,
       method: "manual",
-      notes: notes === "" ? null : notes,
+      notes: notesRaw.trim() === "" ? null : notesRaw.trim(),
     };
 
-    const res = await fetch("/api/entries", {
+    await fetchJson("/api/entries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
-    if (!res.ok) throw new Error(await res.text());
-
-    // reset quick-entry fields (keep date)
-    document.getElementById("rain_mm").value = "";
-    document.getElementById("pump_minutes").value = "";
-    document.getElementById("notes").value = "";
-    setBore(0);
+    // Reset quick-entry fields (keep date)
+    $("rain_mm").value = "";
+    $("bore_litres").value = "";
+    $("notes").value = "";
 
     await refresh();
     status.textContent = "Saved.";
   } catch (e) {
-    status.textContent = `Error: ${e.message || e}`;
+    status.textContent = `Error: ${e?.message || e}`;
   } finally {
     setTimeout(() => (status.textContent = ""), 2500);
     btn.disabled = false;
@@ -104,17 +177,17 @@ async function saveEntry() {
 }
 
 function wire() {
-  document.getElementById("entry_date").value = todayYYYYMMDD();
+  $("entry_date").value = todayYYYYMMDD();
+  $("save_btn").onclick = saveEntry;
 
-  document.getElementById("bore_minus").onclick = () => setBore(boreLitres - step);
-  document.getElementById("bore_plus").onclick = () => setBore(boreLitres + step);
-  document.getElementById("bore_zero").onclick = () => setBore(0);
-  document.getElementById("bore_1000").onclick = () => setBore(1000);
-  document.getElementById("bore_2000").onclick = () => setBore(2000);
-  document.getElementById("bore_5000").onclick = () => setBore(5000);
-
-  document.getElementById("save_btn").onclick = saveEntry;
+  // Nice-to-have: format bore litres with commas on blur
+  $("bore_litres").addEventListener("blur", () => {
+    const n = parseNumberOrNull($("bore_litres").value);
+    if (n === null || Number.isNaN(n)) return;
+    $("bore_litres").value = formatIntWithCommas(Math.round(n));
+  });
 }
 
+// Boot
 wire();
 refresh();
