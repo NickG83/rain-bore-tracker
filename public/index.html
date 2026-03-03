@@ -18,6 +18,9 @@
     th, td { padding: 8px 0; border-bottom: 1px solid #eee; }
     th { text-align: left; }
     td.num, th.num { text-align: right; }
+     @media (max-width: 640px) {
+    .row { grid-template-columns: 1fr; }
+  }
   </style>
 </head>
 <body>
@@ -36,25 +39,13 @@
       </label>
     </div>
 
-    <div style="margin-top:10px;">
-      <div style="margin-bottom:6px;">Bore usage (litres) — 1000L increments</div>
-      <div class="stepper">
-        <button id="bore_minus" type="button">-1000</button>
-        <div><b id="bore_value">0</b> L</div>
-        <button id="bore_plus" type="button">+1000</button>
-        <button id="bore_zero" type="button">0</button>
-        <button id="bore_1000" type="button">1000</button>
-        <button id="bore_2000" type="button">2000</button>
-        <button id="bore_5000" type="button">5000</button>
-      </div>
-    </div>
+<label style="margin-top:10px;">
+  Bore usage (litres)
+  <input id="bore_litres" inputmode="numeric" placeholder="e.g. 1000" />
+</label>
 
     <div class="row" style="margin-top:10px;">
-      <label>
-        Pump runtime (minutes) (optional)
-        <input id="pump_minutes" inputmode="numeric" placeholder="e.g. 45" />
-      </label>
-      <label>
+     <label>
         Notes (optional)
         <input id="notes" placeholder="e.g. topped up header tank twice" />
       </label>
@@ -80,7 +71,6 @@
             <th>Date</th>
             <th class="num">Rain (mm)</th>
             <th class="num">Bore (L)</th>
-            <th class="num">Pump (min)</th>
             <th>Notes</th>
           </tr>
         </thead>
