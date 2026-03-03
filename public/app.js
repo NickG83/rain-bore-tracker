@@ -140,17 +140,17 @@ function renderTiles(tiles) {
 async function refresh() {
   const { from, to } = ytdRange();
 
-  const [entries, summary, tiles] = await Promise.all([
-    fetchJson("/api/entries"),
-    fetchJson("/api/summary"),
-    fetchJson(`/api/tiles?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
-    fetchJson("/api/last_rain"),
-  ]);
+const [entries, summary, tiles, lastRain] = await Promise.all([
+  fetchJson("/api/entries"),
+  fetchJson("/api/summary"),
+  fetchJson(`/api/tiles?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  fetchJson("/api/last_rain"),
+]);
 
-  renderTable(entries);
-  renderMonthlyChart(summary);
-  renderTiles(tiles);
-  renderDaysSinceRainTile(lastRain);
+renderTable(entries);
+renderMonthlyChart(summary);
+renderTiles(tiles);
+renderDaysSinceRainTile(lastRain);
 }
 
 function renderTable(entries) {
