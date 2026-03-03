@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rain & Bore Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; max-width: 900px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    label { display: block; margin-bottom: 10px; }
+    input { width: 100%; padding: 10px; box-sizing: border-box; }
+    button { padding: 10px 14px; border-radius: 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .row { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+    .stepper { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px 0; border-bottom: 1px solid #eee; }
+    th { text-align: left; }
+    td.num, th.num { text-align: right; }
+  </style>
+</head>
+<body>
+  <h1>Rain & Bore Tracker</h1>
+
+  <div class="card">
+    <h2>Quick Add</h2>
+    <div class="row">
+      <label>
+        Date
+        <input id="entry_date" type="date" />
+      </label>
+      <label>
+        Rain (mm)
+        <input id="rain_mm" inputmode="decimal" placeholder="e.g. 12.5" />
+      </label>
+    </div>
+
+    <div style="margin-top:10px;">
+      <div style="margin-bottom:6px;">Bore usage (litres) — 1000L increments</div>
+      <div class="stepper">
+        <button id="bore_minus" type="button">-1000</button>
+        <div><b id="bore_value">0</b> L</div>
+        <button id="bore_plus" type="button">+1000</button>
+        <button id="bore_zero" type="button">0</button>
+        <button id="bore_1000" type="button">1000</button>
+        <button id="bore_2000" type="button">2000</button>
+        <button id="bore_5000" type="button">5000</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <label>
+        Pump runtime (minutes) (optional)
+        <input id="pump_minutes" inputmode="numeric" placeholder="e.g. 45" />
+      </label>
+      <label>
+        Notes (optional)
+        <input id="notes" placeholder="e.g. topped up header tank twice" />
+      </label>
+    </div>
+
+    <div style="margin-top:12px;">
+      <button id="save_btn" type="button">Save entry</button>
+      <span id="status" style="margin-left:10px; opacity:.7;"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Monthly totals</h2>
+    <canvas id="monthly_chart" height="120"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Recent entries</h2>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th class="num">Rain (mm)</th>
+            <th class="num">Bore (L)</th>
+            <th class="num">Pump (min)</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody id="entries_body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
