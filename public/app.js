@@ -1,15 +1,8 @@
 // public/app.js
-// Vanilla JS app controller for Rain & Bore Tracker (Pages + D1)
-// Assumes index.html has:
-// - #entry_date, #rain_mm, #bore_litres, #notes
-// - #save_btn, #status
-// - #entries_body, #monthly_chart
-//
-// Note: Chart.js is loaded globally via CDN as `Chart`.
+// Adds Edit/Delete support via /api/entries/:id (PUT/DELETE)
 
 let chart = null;
-
-/** ---------- Utilities ---------- **/
+let editingId = null; // when set, Save button performs an update
 
 function $(id) {
   const el = document.getElementById(id);
@@ -17,7 +10,6 @@ function $(id) {
   return el;
 }
 
-// Reliable YYYY-MM-DD (don’t rely on locale)
 function todayYYYYMMDD() {
   const d = new Date();
   const yyyy = d.getFullYear();
@@ -26,7 +18,6 @@ function todayYYYYMMDD() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// Parse numeric inputs that may include commas/spaces
 function parseNumberOrNull(raw) {
   const cleaned = String(raw ?? "").trim().replace(/,/g, "");
   if (cleaned === "") return null;
@@ -39,22 +30,48 @@ function formatIntWithCommas(n) {
   return Number(n).toLocaleString();
 }
 
-// Fetch helper that surfaces real errors (HTML, Access redirects, etc.)
 async function fetchJson(url, opts) {
   const res = await fetch(url, opts);
   const text = await res.text();
   const ct = res.headers.get("content-type") || "";
 
-  if (!res.ok) {
-    throw new Error(`${res.status} ${res.statusText} - ${text.slice(0, 400)}`);
-  }
-  if (!ct.includes("application/json")) {
-    throw new Error(`Expected JSON but got ${ct} - ${text.slice(0, 400)}`);
-  }
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText} - ${text.slice(0, 400)}`);
+  if (!ct.includes("application/json")) throw new Error(`Expected JSON but got ${ct} - ${text.slice(0, 400)}`);
   return JSON.parse(text);
 }
 
-/** ---------- UI Actions ---------- **/
+function setStatus(msg, clearMs = 2500) {
+  const status = $("status");
+  status.textContent = msg || "";
+  if (msg && clearMs) setTimeout(() => (status.textContent = ""), clearMs);
+}
+
+function setEditMode(id) {
+  editingId = id;
+  const saveBtn = $("save_btn");
+  const cancelBtn = $("cancel_btn");
+
+  if (editingId) {
+    saveBtn.textContent = "Update entry";
+    cancelBtn.style.display = "inline-block";
+  } else {
+    saveBtn.textContent = "Save entry";
+    cancelBtn.style.display = "none";
+  }
+}
+
+function clearFormKeepDate() {
+  $("rain_mm").value = "";
+  $("bore_litres").value = "";
+  $("notes").value = "";
+}
+
+function loadEntryIntoForm(e) {
+  $("entry_date").value = e.entry_date;
+  $("rain_mm").value = e.rain_mm ?? "";
+  $("bore_litres").value = e.bore_litres ? formatIntWithCommas(e.bore_litres) : "";
+  $("notes").value = e.notes ?? "";
+}
 
 async function refresh() {
   const [entries, summary] = await Promise.all([
@@ -70,20 +87,26 @@ function renderTable(entries) {
   const body = $("entries_body");
   body.innerHTML = "";
 
-  entries.slice(0, 15).forEach((e) => {
+  entries.slice(0, 50).forEach((e) => {
     const tr = document.createElement("tr");
+    tr.dataset.id = e.id;
+
     tr.innerHTML = `
       <td>${e.entry_date}</td>
       <td class="num">${e.rain_mm ?? ""}</td>
       <td class="num">${e.bore_litres ? formatIntWithCommas(e.bore_litres) : ""}</td>
       <td>${e.notes ?? ""}</td>
+      <td>
+        <button type="button" data-action="edit">Edit</button>
+        <button type="button" data-action="delete">Delete</button>
+      </td>
     `;
     body.appendChild(tr);
   });
 
   if (entries.length === 0) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="4">No entries yet.</td>`;
+    tr.innerHTML = `<td colspan="5">No entries yet.</td>`;
     body.appendChild(tr);
   }
 }
@@ -94,8 +117,8 @@ function renderMonthlyChart(summary) {
   const boreKL = summary.map((x) => Number(x.bore_litres_total || 0) / 1000);
 
   const canvas = $("monthly_chart");
-
   if (chart) chart.destroy();
+
   chart = new Chart(canvas, {
     type: "bar",
     data: {
@@ -109,76 +132,144 @@ function renderMonthlyChart(summary) {
   });
 }
 
-async function saveEntry() {
-  const status = $("status");
-  const btn = $("save_btn");
+function buildPayloadFromForm() {
+  const entry_date = $("entry_date").value;
 
+  const rain_mm_raw = $("rain_mm").value;
+  const bore_raw = $("bore_litres").value;
+  const notes_raw = $("notes").value;
+
+  const rain_mm = parseNumberOrNull(rain_mm_raw);
+  const bore_num = parseNumberOrNull(bore_raw);
+
+  if (!entry_date) throw new Error("Date is required.");
+  if (Number.isNaN(rain_mm)) throw new Error("Rain (mm) must be a number.");
+  if (Number.isNaN(bore_num)) throw new Error("Bore usage must be a number (litres).");
+
+  const bore_litres = bore_num === null ? null : Math.round(bore_num);
+
+  if (rain_mm !== null && rain_mm < 0) throw new Error("Rain (mm) must be positive.");
+  if (bore_litres !== null && bore_litres < 0) throw new Error("Bore usage must be positive.");
+
+  // Optional: prevent empty entries (allow notes-only if you want; tweak as desired)
+  if (rain_mm === null && (bore_litres === null || bore_litres === 0) && notes_raw.trim() === "") {
+    throw new Error("Enter rain or bore (or add a note) before saving.");
+  }
+
+  return {
+    entry_date,
+    rain_mm,
+    bore_litres: bore_litres === 0 ? null : bore_litres,
+    method: "manual",
+    notes: notes_raw.trim() === "" ? null : notes_raw.trim(),
+  };
+}
+
+async function saveOrUpdateEntry() {
+  const btn = $("save_btn");
   btn.disabled = true;
-  status.textContent = "Saving...";
+  setStatus(editingId ? "Updating..." : "Saving...", 0);
 
   try {
-    const entry_date = $("entry_date").value;
+    const payload = buildPayloadFromForm();
 
-    const rainRaw = $("rain_mm").value;
-    const boreRaw = $("bore_litres").value;
-    const notesRaw = $("notes").value;
-
-    const rain_mm = parseNumberOrNull(rainRaw);
-    const bore_litres_num = parseNumberOrNull(boreRaw);
-
-    if (!entry_date) throw new Error("Date is required.");
-
-    if (Number.isNaN(rain_mm)) throw new Error("Rain (mm) must be a number.");
-    if (Number.isNaN(bore_litres_num)) throw new Error("Bore usage must be a number (litres).");
-
-    // Convert bore to integer litres (null if empty)
-    const bore_litres =
-      bore_litres_num === null ? null : Math.round(bore_litres_num);
-
-    if (bore_litres !== null && bore_litres < 0) {
-      throw new Error("Bore usage must be a positive number (litres).");
-    }
-    if (rain_mm !== null && rain_mm < 0) {
-      throw new Error("Rain (mm) must be a positive number.");
+    if (editingId) {
+      await fetchJson(`/api/entries/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setStatus("Updated.");
+      setEditMode(null);
+    } else {
+      await fetchJson("/api/entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setStatus("Saved.");
     }
 
-    // Optional guard: disallow totally empty entries
-    if (rain_mm === null && (bore_litres === null || bore_litres === 0) && notesRaw.trim() === "") {
-      throw new Error("Enter rain or bore (or add a note) before saving.");
+    clearFormKeepDate();
+    await refresh();
+  } catch (e) {
+    setStatus(`Error: ${e?.message || e}`, 6000);
+  } finally {
+    btn.disabled = false;
+    // clear status later if it wasn't an error
+    setTimeout(() => {
+      if ($("status").textContent && !$("status").textContent.startsWith("Error:")) {
+        $("status").textContent = "";
+      }
+    }, 2500);
+  }
+}
+
+async function deleteEntry(id) {
+  const ok = confirm("Delete this entry? This cannot be undone.");
+  if (!ok) return;
+
+  setStatus("Deleting...", 0);
+
+  try {
+    await fetchJson(`/api/entries/${id}`, { method: "DELETE" });
+
+    // If you were editing the same record, exit edit mode
+    if (editingId === id) {
+      setEditMode(null);
+      clearFormKeepDate();
     }
-
-    const payload = {
-      entry_date,
-      rain_mm,
-      bore_litres: bore_litres === 0 ? null : bore_litres,
-      method: "manual",
-      notes: notesRaw.trim() === "" ? null : notesRaw.trim(),
-    };
-
-    await fetchJson("/api/entries", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    // Reset quick-entry fields (keep date)
-    $("rain_mm").value = "";
-    $("bore_litres").value = "";
-    $("notes").value = "";
 
     await refresh();
-    status.textContent = "Saved.";
+    setStatus("Deleted.");
   } catch (e) {
-    status.textContent = `Error: ${e?.message || e}`;
-  } finally {
-    setTimeout(() => (status.textContent = ""), 2500);
-    btn.disabled = false;
+    setStatus(`Error: ${e?.message || e}`, 6000);
   }
+}
+
+async function startEdit(id) {
+  setStatus("Loading entry...", 0);
+  try {
+    // We already have data in the table, but simplest is to fetch all and find it
+    // (still tiny dataset). If you want, we can add GET /api/entries/:id later.
+    const entries = await fetchJson("/api/entries");
+    const e = entries.find((x) => x.id === id);
+    if (!e) throw new Error("Entry not found.");
+
+    loadEntryIntoForm(e);
+    setEditMode(id);
+    setStatus("Editing entry.");
+  } catch (err) {
+    setStatus(`Error: ${err?.message || err}`, 6000);
+  }
+}
+
+function cancelEdit() {
+  setEditMode(null);
+  clearFormKeepDate();
+  setStatus("Edit cancelled.");
 }
 
 function wire() {
   $("entry_date").value = todayYYYYMMDD();
-  $("save_btn").onclick = saveEntry;
+
+  $("save_btn").onclick = saveOrUpdateEntry;
+  $("cancel_btn").onclick = cancelEdit;
+
+  // Event delegation for Edit/Delete buttons in the table
+  $("entries_body").addEventListener("click", (ev) => {
+    const btn = ev.target.closest("button");
+    if (!btn) return;
+
+    const action = btn.dataset.action;
+    const tr = btn.closest("tr");
+    const id = tr?.dataset?.id;
+
+    if (!id) return;
+
+    if (action === "edit") startEdit(id);
+    if (action === "delete") deleteEntry(id);
+  });
 
   // Nice-to-have: format bore litres with commas on blur
   $("bore_litres").addEventListener("blur", () => {
