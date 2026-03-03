@@ -255,6 +255,10 @@ function wire() {
 
   $("save_btn").onclick = saveOrUpdateEntry;
   $("cancel_btn").onclick = cancelEdit;
+  $("download_btn").onclick = () => {
+  // Triggers the browser file download
+  window.location.href = "/api/export";
+};
 
   // Event delegation for Edit/Delete buttons in the table
   $("entries_body").addEventListener("click", (ev) => {
