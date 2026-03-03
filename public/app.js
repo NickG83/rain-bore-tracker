@@ -1,8 +1,21 @@
 // public/app.js
-// Adds Edit/Delete support via /api/entries/:id (PUT/DELETE)
+// Rain & Bore Tracker
+// - Create entries (POST /api/entries)
+// - Edit/Delete entries (PUT/DELETE /api/entries/:id)
+// - Monthly chart (GET /api/summary)
+// - CSV export (GET /api/export)
+// - Dashboard tiles (GET /api/tiles?from=YYYY-MM-DD&to=YYYY-MM-DD)
+//
+// Assumes index.html contains elements:
+// #entry_date, #rain_mm, #bore_litres, #notes
+// #save_btn, #cancel_btn, #download_btn, #status
+// #entries_body, #monthly_chart
+// #tile_rain_ytd, #tile_bore_ytd, #tile_range
+//
+// Chart.js is loaded globally as `Chart`.
 
 let chart = null;
-let editingId = null; // when set, Save button performs an update
+let editingId = null; // when set, Save performs UPDATE instead of CREATE
 
 function $(id) {
   const el = document.getElementById(id);
@@ -18,6 +31,14 @@ function todayYYYYMMDD() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+function ytdRange() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const from = `${yyyy}-01-01`;
+  const to = todayYYYYMMDD();
+  return { from, to };
+}
+
 function parseNumberOrNull(raw) {
   const cleaned = String(raw ?? "").trim().replace(/,/g, "");
   if (cleaned === "") return null;
@@ -30,13 +51,30 @@ function formatIntWithCommas(n) {
   return Number(n).toLocaleString();
 }
 
+function formatMm(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "0 mm";
+  return (Number.isInteger(v) ? v.toString() : v.toFixed(1)) + " mm";
+}
+
+function formatKLFromLitres(litres) {
+  const L = Number(litres);
+  if (!Number.isFinite(L)) return "0 kL";
+  const kL = L / 1000;
+  return (Number.isInteger(kL) ? kL.toString() : kL.toFixed(1)) + " kL";
+}
+
 async function fetchJson(url, opts) {
   const res = await fetch(url, opts);
   const text = await res.text();
   const ct = res.headers.get("content-type") || "";
 
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText} - ${text.slice(0, 400)}`);
-  if (!ct.includes("application/json")) throw new Error(`Expected JSON but got ${ct} - ${text.slice(0, 400)}`);
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText} - ${text.slice(0, 400)}`);
+  }
+  if (!ct.includes("application/json")) {
+    throw new Error(`Expected JSON but got ${ct} - ${text.slice(0, 400)}`);
+  }
   return JSON.parse(text);
 }
 
@@ -73,14 +111,24 @@ function loadEntryIntoForm(e) {
   $("notes").value = e.notes ?? "";
 }
 
+function renderTiles(tiles) {
+  $("tile_rain_ytd").textContent = formatMm(tiles.rain_mm_total);
+  $("tile_bore_ytd").textContent = formatKLFromLitres(tiles.bore_litres_total);
+  $("tile_range").textContent = `${tiles.from} → ${tiles.to}`;
+}
+
 async function refresh() {
-  const [entries, summary] = await Promise.all([
+  const { from, to } = ytdRange();
+
+  const [entries, summary, tiles] = await Promise.all([
     fetchJson("/api/entries"),
     fetchJson("/api/summary"),
+    fetchJson(`/api/tiles?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   ]);
 
   renderTable(entries);
   renderMonthlyChart(summary);
+  renderTiles(tiles);
 }
 
 function renderTable(entries) {
@@ -151,7 +199,7 @@ function buildPayloadFromForm() {
   if (rain_mm !== null && rain_mm < 0) throw new Error("Rain (mm) must be positive.");
   if (bore_litres !== null && bore_litres < 0) throw new Error("Bore usage must be positive.");
 
-  // Optional: prevent empty entries (allow notes-only if you want; tweak as desired)
+  // Prevent totally empty entries
   if (rain_mm === null && (bore_litres === null || bore_litres === 0) && notes_raw.trim() === "") {
     throw new Error("Enter rain or bore (or add a note) before saving.");
   }
@@ -196,7 +244,6 @@ async function saveOrUpdateEntry() {
     setStatus(`Error: ${e?.message || e}`, 6000);
   } finally {
     btn.disabled = false;
-    // clear status later if it wasn't an error
     setTimeout(() => {
       if ($("status").textContent && !$("status").textContent.startsWith("Error:")) {
         $("status").textContent = "";
@@ -214,7 +261,6 @@ async function deleteEntry(id) {
   try {
     await fetchJson(`/api/entries/${id}`, { method: "DELETE" });
 
-    // If you were editing the same record, exit edit mode
     if (editingId === id) {
       setEditMode(null);
       clearFormKeepDate();
@@ -230,8 +276,6 @@ async function deleteEntry(id) {
 async function startEdit(id) {
   setStatus("Loading entry...", 0);
   try {
-    // We already have data in the table, but simplest is to fetch all and find it
-    // (still tiny dataset). If you want, we can add GET /api/entries/:id later.
     const entries = await fetchJson("/api/entries");
     const e = entries.find((x) => x.id === id);
     if (!e) throw new Error("Entry not found.");
@@ -255,10 +299,11 @@ function wire() {
 
   $("save_btn").onclick = saveOrUpdateEntry;
   $("cancel_btn").onclick = cancelEdit;
+
   $("download_btn").onclick = () => {
-  // Triggers the browser file download
-  window.location.href = "/api/export";
-};
+    // Triggers browser file download
+    window.location.href = "/api/export";
+  };
 
   // Event delegation for Edit/Delete buttons in the table
   $("entries_body").addEventListener("click", (ev) => {
@@ -268,14 +313,13 @@ function wire() {
     const action = btn.dataset.action;
     const tr = btn.closest("tr");
     const id = tr?.dataset?.id;
-
     if (!id) return;
 
     if (action === "edit") startEdit(id);
     if (action === "delete") deleteEntry(id);
   });
 
-  // Nice-to-have: format bore litres with commas on blur
+  // Format bore litres with commas on blur
   $("bore_litres").addEventListener("blur", () => {
     const n = parseNumberOrNull($("bore_litres").value);
     if (n === null || Number.isNaN(n)) return;
