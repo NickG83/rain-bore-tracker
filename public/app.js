@@ -5,16 +5,21 @@
 // - Monthly chart (GET /api/summary)
 // - CSV export (GET /api/export)
 // - Dashboard tiles (GET /api/tiles?from=YYYY-MM-DD&to=YYYY-MM-DD)
+// - Days since last rain tile (GET /api/last_rain)
+// - Rainfall by month, per year line chart (GET /api/rain_by_year_month)
 //
 // Assumes index.html contains elements:
 // #entry_date, #rain_mm, #bore_litres, #notes
 // #save_btn, #cancel_btn, #download_btn, #status
 // #entries_body, #monthly_chart
 // #tile_rain_ytd, #tile_bore_ytd, #tile_range
+// #tile_days_since_rain, #tile_last_rain_info
+// #rain_year_month_chart
 //
 // Chart.js is loaded globally as `Chart`.
 
-let chart = null;
+let monthlyChart = null;
+let rainYearMonthChart = null;
 let editingId = null; // when set, Save performs UPDATE instead of CREATE
 
 function $(id) {
@@ -32,11 +37,8 @@ function todayYYYYMMDD() {
 }
 
 function ytdRange() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const from = `${yyyy}-01-01`;
-  const to = todayYYYYMMDD();
-  return { from, to };
+  const yyyy = new Date().getFullYear();
+  return { from: `${yyyy}-01-01`, to: todayYYYYMMDD() };
 }
 
 function parseNumberOrNull(raw) {
@@ -69,12 +71,8 @@ async function fetchJson(url, opts) {
   const text = await res.text();
   const ct = res.headers.get("content-type") || "";
 
-  if (!res.ok) {
-    throw new Error(`${res.status} ${res.statusText} - ${text.slice(0, 400)}`);
-  }
-  if (!ct.includes("application/json")) {
-    throw new Error(`Expected JSON but got ${ct} - ${text.slice(0, 400)}`);
-  }
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText} - ${text.slice(0, 400)}`);
+  if (!ct.includes("application/json")) throw new Error(`Expected JSON but got ${ct} - ${text.slice(0, 400)}`);
   return JSON.parse(text);
 }
 
@@ -98,6 +96,14 @@ function setEditMode(id) {
   }
 }
 
+/** ---------- Tiles ---------- **/
+
+function renderTiles(tiles) {
+  $("tile_rain_ytd").textContent = formatMm(tiles.rain_mm_total);
+  $("tile_bore_ytd").textContent = formatKLFromLitres(tiles.bore_litres_total);
+  $("tile_range").textContent = `${tiles.from} → ${tiles.to}`;
+}
+
 function daysSinceLocalYYYYMMDD(dateStr) {
   const [y, m, d] = dateStr.split("-").map(Number);
   const then = new Date(y, m - 1, d);
@@ -107,7 +113,7 @@ function daysSinceLocalYYYYMMDD(dateStr) {
 }
 
 function renderDaysSinceRainTile(lastRain) {
-  if (!lastRain.last_date) {
+  if (!lastRain?.last_date) {
     $("tile_days_since_rain").textContent = "—";
     $("tile_last_rain_info").textContent = "No rainfall recorded yet";
     return;
@@ -118,40 +124,7 @@ function renderDaysSinceRainTile(lastRain) {
   $("tile_last_rain_info").textContent = `${lastRain.last_date} (${lastRain.last_rain_mm} mm)`;
 }
 
-function clearFormKeepDate() {
-  $("rain_mm").value = "";
-  $("bore_litres").value = "";
-  $("notes").value = "";
-}
-
-function loadEntryIntoForm(e) {
-  $("entry_date").value = e.entry_date;
-  $("rain_mm").value = e.rain_mm ?? "";
-  $("bore_litres").value = e.bore_litres ? formatIntWithCommas(e.bore_litres) : "";
-  $("notes").value = e.notes ?? "";
-}
-
-function renderTiles(tiles) {
-  $("tile_rain_ytd").textContent = formatMm(tiles.rain_mm_total);
-  $("tile_bore_ytd").textContent = formatKLFromLitres(tiles.bore_litres_total);
-  $("tile_range").textContent = `${tiles.from} → ${tiles.to}`;
-}
-
-async function refresh() {
-  const { from, to } = ytdRange();
-
-const [entries, summary, tiles, lastRain] = await Promise.all([
-  fetchJson("/api/entries"),
-  fetchJson("/api/summary"),
-  fetchJson(`/api/tiles?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
-  fetchJson("/api/last_rain"),
-]);
-
-renderTable(entries);
-renderMonthlyChart(summary);
-renderTiles(tiles);
-renderDaysSinceRainTile(lastRain);
-}
+/** ---------- Table ---------- **/
 
 function renderTable(entries) {
   const body = $("entries_body");
@@ -181,15 +154,17 @@ function renderTable(entries) {
   }
 }
 
+/** ---------- Charts ---------- **/
+
 function renderMonthlyChart(summary) {
   const labels = summary.map((x) => x.month);
   const rain = summary.map((x) => Number(x.rain_mm_total || 0));
   const boreKL = summary.map((x) => Number(x.bore_litres_total || 0) / 1000);
 
   const canvas = $("monthly_chart");
-  if (chart) chart.destroy();
+  if (monthlyChart) monthlyChart.destroy();
 
-  chart = new Chart(canvas, {
+  monthlyChart = new Chart(canvas, {
     type: "bar",
     data: {
       labels,
@@ -200,6 +175,59 @@ function renderMonthlyChart(summary) {
     },
     options: { responsive: true },
   });
+}
+
+function renderRainYearMonthChart(rows) {
+  // rows: [{year:"2026", month:"02", rain_mm_total: 26}, ...]
+  const monthLabels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  // year -> [12] totals
+  const byYear = new Map();
+
+  for (const r of rows) {
+    const y = String(r.year);
+    const mIdx = Number(r.month) - 1; // "01" -> 0
+    const val = Number(r.rain_mm_total || 0);
+
+    if (!byYear.has(y)) byYear.set(y, new Array(12).fill(0));
+    if (mIdx >= 0 && mIdx < 12) byYear.get(y)[mIdx] = val;
+  }
+
+  const years = Array.from(byYear.keys()).sort();
+  const datasets = years.map((y) => ({
+    label: y,
+    data: byYear.get(y),
+    tension: 0.25, // slight smoothing; set to 0 for straight lines
+  }));
+
+  const canvas = $("rain_year_month_chart");
+  if (rainYearMonthChart) rainYearMonthChart.destroy();
+
+  rainYearMonthChart = new Chart(canvas, {
+    type: "line",
+    data: { labels: monthLabels, datasets },
+    options: {
+      responsive: true,
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { display: true }, tooltip: { enabled: true } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: "mm" } } },
+    },
+  });
+}
+
+/** ---------- Form / CRUD ---------- **/
+
+function clearFormKeepDate() {
+  $("rain_mm").value = "";
+  $("bore_litres").value = "";
+  $("notes").value = "";
+}
+
+function loadEntryIntoForm(e) {
+  $("entry_date").value = e.entry_date;
+  $("rain_mm").value = e.rain_mm ?? "";
+  $("bore_litres").value = e.bore_litres ? formatIntWithCommas(e.bore_litres) : "";
+  $("notes").value = e.notes ?? "";
 }
 
 function buildPayloadFromForm() {
@@ -316,6 +344,26 @@ function cancelEdit() {
   setStatus("Edit cancelled.");
 }
 
+/** ---------- Boot / Wiring ---------- **/
+
+async function refresh() {
+  const { from, to } = ytdRange();
+
+  const [entries, summary, tiles, lastRain, rainYearMonth] = await Promise.all([
+    fetchJson("/api/entries"),
+    fetchJson("/api/summary"),
+    fetchJson(`/api/tiles?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+    fetchJson("/api/last_rain"),
+    fetchJson("/api/rain_by_year_month"),
+  ]);
+
+  renderTable(entries);
+  renderMonthlyChart(summary);
+  renderTiles(tiles);
+  renderDaysSinceRainTile(lastRain);
+  renderRainYearMonthChart(rainYearMonth);
+}
+
 function wire() {
   $("entry_date").value = todayYYYYMMDD();
 
@@ -323,11 +371,10 @@ function wire() {
   $("cancel_btn").onclick = cancelEdit;
 
   $("download_btn").onclick = () => {
-    // Triggers browser file download
     window.location.href = "/api/export";
   };
 
-  // Event delegation for Edit/Delete buttons in the table
+  // Edit/Delete buttons in the table
   $("entries_body").addEventListener("click", (ev) => {
     const btn = ev.target.closest("button");
     if (!btn) return;
