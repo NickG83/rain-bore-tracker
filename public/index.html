@@ -7,91 +7,144 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="/brand/xanzaree/styles/xanzaree-theme.css" />
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; }
-    .page { margin: 16px auto; max-width: 980px; padding: 0 12px 20px; }
-    .card { padding: 16px; margin-bottom: 16px; }
-    label { display: block; margin-bottom: 10px; }
-    input { width: 100%; padding: 10px; box-sizing: border-box; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); }
-    button { padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font-weight: 600; }
+    body { margin: 0; }
+    .page { margin: 10px auto 20px; max-width: 980px; padding: 0 12px 20px; }
+    .card { padding: 18px; margin-bottom: 14px; }
+    h2 { font-size: clamp(1.15rem, 2.2vw, 1.4rem); }
+    label {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--xanz-ocean-mid);
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+    input {
+      width: 100%;
+      margin-top: 6px;
+      padding: 10px 12px;
+      box-sizing: border-box;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    input:focus {
+      outline: 2px solid color-mix(in srgb, var(--primary) 20%, transparent);
+      outline-offset: 1px;
+      border-color: var(--primary);
+    }
+    button {
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 600;
+    }
     button:hover { background: var(--surface-2); }
     button:disabled { opacity: .6; cursor: not-allowed; }
     .row { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
     .stepper { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 8px 0; border-bottom: 1px solid var(--border); }
-    th { text-align: left; }
+    th, td { padding: 10px 0; border-bottom: 1px solid var(--border); }
+    th {
+      text-align: left;
+      color: var(--xanz-ocean-mid);
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
     td.num, th.num { text-align: right; }
     .brand-header {
-      background: linear-gradient(120deg, rgba(1,55,111,0.95) 0%, rgba(4,22,66,0.95) 100%);
+      background: linear-gradient(130deg, rgba(1,55,111,0.97) 0%, rgba(4,22,66,0.97) 100%);
       border-radius: var(--radius);
       color: var(--xanz-surf-mist);
       overflow: hidden;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
     }
     .brand-hero {
-      display: grid;
-      grid-template-columns: 1.25fr 1fr;
-      align-items: center;
-      gap: 16px;
-      padding: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 14px 18px;
     }
     .brand-copy h1 {
-      margin: 0 0 8px;
-      font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+      margin: 0 0 4px;
+      font-family: var(--font-heading);
+      font-size: clamp(1.45rem, 3vw, 2.05rem);
+      line-height: 1.15;
+      color: var(--xanz-surf-mist);
     }
     .brand-copy p {
       margin: 0;
-      opacity: 0.95;
+      opacity: 0.92;
+      font-size: 0.95rem;
+      max-width: 56ch;
     }
     .brand-logo {
-      width: min(240px, 100%);
+      width: min(200px, 100%);
       display: block;
-      margin-bottom: 14px;
+      margin-bottom: 8px;
       height: auto;
     }
-    .brand-image {
-      width: 100%;
-      max-height: 260px;
-      object-fit: cover;
-      border-radius: var(--radius-sm);
-    }
     @media (max-width: 640px) {
-      .brand-hero { grid-template-columns: 1fr; }
+      .page { margin-top: 8px; padding: 0 10px 16px; }
+      .brand-hero { padding: 12px 14px; }
+      .row { grid-template-columns: 1fr; }
     }
-    @media (max-width: 640px) {
-    .row { grid-template-columns: 1fr; }
-  }
     .tiles {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin: 12px 0 16px;
-  }
-  .tile {
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 14px 16px;
-    background: var(--surface);
-  }
-  .tile-label {
-    font-size: 13px;
-    opacity: 0.75;
-    margin-bottom: 6px;
-  }
-  .tile-value {
-    font-size: 28px;
-    font-weight: 800;
-    line-height: 1.1;
-  }
-  .tile-sub {
-    margin-top: 6px;
-    font-size: 12px;
-    opacity: 0.7;
-  }
-
-  @media (max-width: 640px) {
-    .tiles { grid-template-columns: 1fr; }
-  }
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 10px 0 14px;
+    }
+    .tile {
+      border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border));
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%);
+      box-shadow: 0 3px 10px rgba(4, 22, 66, 0.07);
+    }
+    .tile-label {
+      font-size: 0.78rem;
+      color: var(--xanz-ocean-mid);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    .tile-value {
+      font-size: clamp(1.45rem, 3.4vw, 1.85rem);
+      font-weight: 700;
+      color: var(--xanz-navy);
+      line-height: 1.15;
+      font-family: var(--font-heading);
+    }
+    .tile-sub {
+      margin-top: 4px;
+      font-size: 0.79rem;
+      color: var(--text-muted);
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 12px;
+    }
+    #status {
+      margin-left: 2px;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+    @media (max-width: 860px) {
+      .tiles { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 640px) {
+      .tiles { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -103,7 +156,6 @@
         <h1>Rain &amp; Bore Tracker</h1>
         <p>Track rainfall and bore use with Xanzaree reporting visuals.</p>
       </div>
-      <img class="brand-image" src="/brand/xanzaree/assets/xanzaree_hero_2400w.webp" alt="Xanzaree hero landscape" />
     </div>
   </header>
 
@@ -140,23 +192,23 @@
       </label>
     </div>
 
-<label style="margin-top:10px;">
+<label style="margin-top:6px;">
   Bore usage (litres)
   <input id="bore_litres" inputmode="numeric" placeholder="e.g. 1000" />
 </label>
 
-    <div class="row" style="margin-top:10px;">
+    <div class="row" style="margin-top:6px;">
      <label>
         Notes (optional)
         <input id="notes" placeholder="e.g. topped up header tank twice" />
       </label>
     </div>
 
-    <div style="margin-top:12px;">
-      <button id="save_btn" type="button">Save entry</button>
-      <button id="cancel_btn" type="button" style="display:none;">Cancel edit</button>
-      <button id="download_btn" type="button">Download CSV</button>
-      <span id="status" style="margin-left:10px; opacity:.7;"></span>
+    <div class="actions">
+      <button id="save_btn" class="btn-primary" type="button">Save entry</button>
+      <button id="cancel_btn" class="btn-secondary" type="button" style="display:none;">Cancel edit</button>
+      <button id="download_btn" class="btn-secondary" type="button">Download CSV</button>
+      <span id="status"></span>
     </div>
   </div>
 
