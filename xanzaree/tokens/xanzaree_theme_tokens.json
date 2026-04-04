@@ -1,0 +1,46 @@
+{
+  "palette": {
+    "Deep Ocean": "#01376F",
+    "Navy": "#041642",
+    "Ocean Mid": "#1E3755",
+    "Slate Blue": "#465A71",
+    "Surf Mist": "#FAFBF8",
+    "Cool Steel": "#3E4145",
+    "Charcoal": "#181819",
+    "Border Light": "#D6DADF",
+    "Surface Alt": "#F3F5F6",
+    "Dark BG": "#101111",
+    "Dark Surface": "#222224",
+    "Dark Surface Alt": "#2D2E30",
+    "Dark Border": "#3A414B",
+    "Muted Dark": "#C7CDD6",
+    "Link Dark": "#7FB3FF",
+    "Primary Hover Dark": "#0A4A8D"
+  },
+  "light": {
+    "background": "#FAFBF8",
+    "surface": "#FFFFFF",
+    "surface_alt": "#F3F5F6",
+    "border": "#D6DADF",
+    "text": "#181819",
+    "text_muted": "#3E4145",
+    "link": "#01376F",
+    "primary": "#01376F",
+    "primary_hover": "#041642",
+    "secondary": "#1E3755",
+    "accent": "#465A71"
+  },
+  "dark": {
+    "background": "#101111",
+    "surface": "#222224",
+    "surface_alt": "#2D2E30",
+    "border": "#3A414B",
+    "text": "#FAFBF8",
+    "text_muted": "#C7CDD6",
+    "link": "#7FB3FF",
+    "primary": "#01376F",
+    "primary_hover": "#0A4A8D",
+    "secondary": "#1E3755",
+    "accent": "#465A71"
+  }
+}
