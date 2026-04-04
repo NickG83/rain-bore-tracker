@@ -156,10 +156,57 @@ function renderTable(entries) {
 
 /** ---------- Charts ---------- **/
 
+function getThemeVars() {
+  const styles = getComputedStyle(document.documentElement);
+  const token = (name, fallback = "") => styles.getPropertyValue(name).trim() || fallback;
+  const fontFamily = token("--font-ui", token("--font-body", "Inter, sans-serif"));
+
+  return {
+    fonts: {
+      ui: fontFamily,
+    },
+    colors: {
+      rain: token("--xanz-deep-ocean", token("--primary", "#01376F")),
+      bore: token("--xanz-slate", token("--accent", "#465A71")),
+      linePalette: [
+        token("--xanz-deep-ocean", token("--primary", "#01376F")),
+        token("--xanz-ocean-mid", token("--secondary", "#1E3755")),
+        token("--xanz-slate", token("--accent", "#465A71")),
+        token("--xanz-navy", token("--primary-hover", "#041642")),
+      ],
+      text: token("--text", "#181819"),
+      textMuted: token("--text-muted", "#3E4145"),
+      border: token("--border", "#D6DADF"),
+      surface: token("--surface", "#FFFFFF"),
+    },
+  };
+}
+
+function withAlpha(color, alpha) {
+  if (!color) return color;
+
+  if (color.startsWith("#")) {
+    let hex = color.slice(1);
+    if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
+    if (hex.length !== 6) return color;
+    const r = Number.parseInt(hex.slice(0, 2), 16);
+    const g = Number.parseInt(hex.slice(2, 4), 16);
+    const b = Number.parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  const rgbMatch = color.match(/rgba?\(([^)]+)\)/i);
+  if (!rgbMatch) return color;
+  const channels = rgbMatch[1].split(",").map((x) => x.trim());
+  if (channels.length < 3) return color;
+  return `rgba(${channels[0]}, ${channels[1]}, ${channels[2]}, ${alpha})`;
+}
+
 function renderMonthlyChart(summary) {
   const labels = summary.map((x) => x.month);
   const rain = summary.map((x) => Number(x.rain_mm_total || 0));
   const boreKL = summary.map((x) => Number(x.bore_litres_total || 0) / 1000);
+  const theme = getThemeVars();
 
   const canvas = $("monthly_chart");
   if (monthlyChart) monthlyChart.destroy();
@@ -169,17 +216,74 @@ function renderMonthlyChart(summary) {
     data: {
       labels,
       datasets: [
-        { label: "Rain (mm)", data: rain },
-        { label: "Bore (kL)", data: boreKL },
+        {
+          label: "Rain (mm)",
+          data: rain,
+          borderColor: theme.colors.rain,
+          backgroundColor: withAlpha(theme.colors.rain, 0.72),
+          borderWidth: 1.5,
+        },
+        {
+          label: "Bore (kL)",
+          data: boreKL,
+          borderColor: theme.colors.bore,
+          backgroundColor: withAlpha(theme.colors.bore, 0.62),
+          borderWidth: 1.5,
+        },
       ],
     },
-    options: { responsive: true },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          labels: {
+            color: theme.colors.textMuted,
+            font: { family: theme.fonts.ui, size: 12, weight: "500" },
+          },
+        },
+        tooltip: {
+          titleColor: theme.colors.text,
+          bodyColor: theme.colors.textMuted,
+          backgroundColor: withAlpha(theme.colors.surface, 0.96),
+          borderColor: withAlpha(theme.colors.border, 0.9),
+          borderWidth: 1,
+          titleFont: { family: theme.fonts.ui, weight: "600" },
+          bodyFont: { family: theme.fonts.ui, weight: "500" },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: theme.colors.textMuted,
+            font: { family: theme.fonts.ui, size: 12 },
+          },
+          grid: { color: withAlpha(theme.colors.border, 0.4) },
+          title: {
+            color: theme.colors.textMuted,
+            font: { family: theme.fonts.ui, size: 12, weight: "600" },
+          },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: theme.colors.textMuted,
+            font: { family: theme.fonts.ui, size: 12 },
+          },
+          grid: { color: withAlpha(theme.colors.border, 0.4) },
+          title: {
+            color: theme.colors.textMuted,
+            font: { family: theme.fonts.ui, size: 12, weight: "600" },
+          },
+        },
+      },
+    },
   });
 }
 
 function renderRainYearMonthChart(rows) {
   // rows: [{year:"2026", month:"02", rain_mm_total: 26}, ...]
   const monthLabels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const theme = getThemeVars();
 
   // year -> [12] totals
   const byYear = new Map();
@@ -194,11 +298,25 @@ function renderRainYearMonthChart(rows) {
   }
 
   const years = Array.from(byYear.keys()).sort();
-  const datasets = years.map((y) => ({
-    label: y,
-    data: byYear.get(y),
-    tension: 0.25, // slight smoothing; set to 0 for straight lines
-  }));
+  const datasets = years.map((y, idx) => {
+    const lineColor = theme.colors.linePalette[idx % theme.colors.linePalette.length];
+    return {
+      label: y,
+      data: byYear.get(y),
+      tension: 0.25, // slight smoothing; set to 0 for straight lines
+      borderColor: lineColor,
+      backgroundColor: withAlpha(lineColor, 0.18),
+      pointBackgroundColor: lineColor,
+      pointBorderColor: "#FFFFFF",
+      pointHoverBackgroundColor: lineColor,
+      pointHoverBorderColor: "#FFFFFF",
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      pointBorderWidth: 1.5,
+      pointHoverBorderWidth: 2,
+      fill: false,
+    };
+  });
 
   const canvas = $("rain_year_month_chart");
   if (rainYearMonthChart) rainYearMonthChart.destroy();
@@ -209,8 +327,52 @@ function renderRainYearMonthChart(rows) {
     options: {
       responsive: true,
       interaction: { mode: "index", intersect: false },
-      plugins: { legend: { display: true }, tooltip: { enabled: true } },
-      scales: { y: { beginAtZero: true, title: { display: true, text: "mm" } } },
+      plugins: {
+        legend: {
+          display: true,
+          labels: {
+            color: theme.colors.textMuted,
+            font: { family: theme.fonts.ui, size: 12, weight: "500" },
+          },
+        },
+        tooltip: {
+          enabled: true,
+          titleColor: theme.colors.text,
+          bodyColor: theme.colors.textMuted,
+          backgroundColor: withAlpha(theme.colors.surface, 0.96),
+          borderColor: withAlpha(theme.colors.border, 0.9),
+          borderWidth: 1,
+          titleFont: { family: theme.fonts.ui, weight: "600" },
+          bodyFont: { family: theme.fonts.ui, weight: "500" },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: theme.colors.textMuted,
+            font: { family: theme.fonts.ui, size: 12 },
+          },
+          grid: { color: withAlpha(theme.colors.border, 0.4) },
+          title: {
+            color: theme.colors.textMuted,
+            font: { family: theme.fonts.ui, size: 12, weight: "600" },
+          },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: theme.colors.textMuted,
+            font: { family: theme.fonts.ui, size: 12 },
+          },
+          grid: { color: withAlpha(theme.colors.border, 0.4) },
+          title: {
+            display: true,
+            text: "mm",
+            color: theme.colors.textMuted,
+            font: { family: theme.fonts.ui, size: 12, weight: "600" },
+          },
+        },
+      },
     },
   });
 }
