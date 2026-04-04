@@ -66,12 +66,21 @@
     }
     .brand-hero {
       display: flex;
+      justify-content: flex-end;
       align-items: flex-start;
-      gap: 10px;
-      padding: 14px 18px;
+      min-height: clamp(130px, 18vw, 165px);
+      padding: 12px 18px 14px;
+    }
+    .brand-copy {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      text-align: right;
+      gap: 4px;
+      max-width: min(420px, 100%);
     }
     .brand-copy h1 {
-      margin: 0 0 4px;
+      margin: 0;
       font-family: var(--font-heading);
       font-size: clamp(1.45rem, 3vw, 2.05rem);
       line-height: 1.15;
@@ -81,17 +90,24 @@
       margin: 0;
       opacity: 0.92;
       font-size: 0.95rem;
-      max-width: 56ch;
+      max-width: 44ch;
     }
     .brand-logo {
-      width: min(200px, 100%);
+      width: min(170px, 100%);
       display: block;
-      margin-bottom: 8px;
+      margin-bottom: 2px;
       height: auto;
     }
     @media (max-width: 640px) {
       .page { margin-top: 8px; padding: 0 10px 16px; }
-      .brand-hero { padding: 12px 14px; }
+      .brand-hero {
+        min-height: 0;
+        padding: 12px 14px;
+      }
+      .brand-copy {
+        max-width: 100%;
+        gap: 3px;
+      }
       .row { grid-template-columns: 1fr; }
     }
     .tiles {
