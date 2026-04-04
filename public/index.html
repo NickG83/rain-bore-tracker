@@ -66,12 +66,22 @@
     }
     .brand-hero {
       display: flex;
+      justify-content: space-between;
       align-items: flex-start;
-      gap: 10px;
-      padding: 14px 18px;
+      min-height: clamp(96px, 12vw, 118px);
+      padding: 10px 20px 10px;
+      gap: 16px;
+    }
+    .brand-copy {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      text-align: left;
+      gap: 4px;
+      width: min(440px, 100%);
     }
     .brand-copy h1 {
-      margin: 0 0 4px;
+      margin: 0;
       font-family: var(--font-heading);
       font-size: clamp(1.45rem, 3vw, 2.05rem);
       line-height: 1.15;
@@ -81,17 +91,30 @@
       margin: 0;
       opacity: 0.92;
       font-size: 0.95rem;
-      max-width: 56ch;
+      max-width: 40ch;
     }
     .brand-logo {
-      width: min(200px, 100%);
+      width: min(170px, 100%);
       display: block;
-      margin-bottom: 8px;
+      flex: 0 0 auto;
+      align-self: flex-start;
       height: auto;
     }
     @media (max-width: 640px) {
       .page { margin-top: 8px; padding: 0 10px 16px; }
-      .brand-hero { padding: 12px 14px; }
+      .brand-hero {
+        justify-content: space-between;
+        min-height: 0;
+        padding: 10px 14px;
+        gap: 10px;
+      }
+      .brand-copy {
+        width: min(320px, 100%);
+        gap: 4px;
+      }
+      .brand-logo {
+        width: min(128px, 38vw);
+      }
       .row { grid-template-columns: 1fr; }
     }
     .tiles {
@@ -152,10 +175,10 @@
   <header class="brand-header">
     <div class="brand-hero">
       <div class="brand-copy">
-        <img class="brand-logo" src="/brand/xanzaree/assets/xanzaree_logo_transparent_1024h.png" alt="Xanzaree logo" />
         <h1>Rain &amp; Bore Tracker</h1>
         <p>Track rainfall and bore use with Xanzaree reporting visuals.</p>
       </div>
+      <img class="brand-logo" src="/brand/xanzaree/assets/xanzaree_logo_transparent_1024h.png" alt="Xanzaree logo" />
     </div>
   </header>
 
