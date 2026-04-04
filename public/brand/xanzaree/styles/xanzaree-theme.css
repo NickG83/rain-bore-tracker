@@ -1,6 +1,13 @@
 /* XANZAREE Brand Theme — generated tokens
    Primary use: light theme
+   Font standardization:
+   - Heading / display: Libre Baskerville
+   - Body / UI: Inter
 */
+
+/* Web font loading for consistent rendering */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Baskerville:wght@400;700&display=swap");
+
 :root {
   --xanz-deep-ocean: #01376F;
   --xanz-navy: #041642;
@@ -29,8 +36,10 @@
   --shadow: 0 10px 28px rgba(4, 22, 66, 0.14);
   --shadow-sm: 0 6px 16px rgba(4, 22, 66, 0.12);
 
-  --font-heading: "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", serif;
-  --font-body: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Locked font system */
+  --font-heading: "Libre Baskerville", Georgia, "Times New Roman", serif;
+  --font-body: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-ui: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 [data-theme="dark"] {
@@ -51,6 +60,11 @@
   --shadow-sm: 0 6px 16px rgba(0,0,0,0.40);
 }
 
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -60,15 +74,40 @@ body {
 
 a { color: var(--link); }
 
-h1, h2, h3 {
+h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   color: var(--xanz-navy);
   letter-spacing: 0.01em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+h1 {
+  font-weight: 700;
 }
 
 h2, h3 {
   margin: 0 0 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
+}
+
+h4, h5, h6 {
+  font-weight: 400;
+}
+
+p, li, dt, dd, small, blockquote, figcaption {
+  font-family: var(--font-body);
+}
+
+label,
+input,
+select,
+textarea,
+button,
+table,
+th,
+td {
+  font-family: var(--font-ui);
 }
 
 .card {
