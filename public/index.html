@@ -34,7 +34,7 @@
       outline-offset: 1px;
       border-color: var(--primary);
     }
-    button {
+    button:not([class]) {
       padding: 10px 14px;
       border-radius: var(--radius-sm);
       border: 1px solid var(--border);
@@ -43,8 +43,8 @@
       cursor: pointer;
       font-weight: 600;
     }
-    button:hover { background: var(--surface-2); }
-    button:disabled { opacity: .6; cursor: not-allowed; }
+    button:not([class]):hover { background: var(--surface-2); }
+    button:not([class]):disabled { opacity: .6; cursor: not-allowed; }
     .row { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
     .stepper { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     table { width: 100%; border-collapse: collapse; }

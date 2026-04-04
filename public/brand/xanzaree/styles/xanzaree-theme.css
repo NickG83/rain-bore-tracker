@@ -138,3 +138,88 @@ td {
 .btn-secondary:hover {
   background: var(--surface-2);
 }
+
+.btn-primary,
+.btn-secondary,
+.btn-edit,
+.btn-settings,
+.btn-admin,
+.btn-warning,
+.btn-delete {
+  font-family: var(--font-ui);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.btn-primary { border-color: rgba(255,255,255,0.08); }
+.btn-secondary {
+  border-color: var(--border);
+  color: var(--primary);
+}
+
+.btn-edit {
+  background: #01376F;
+  color: var(--xanz-surf-mist);
+  border: 1px solid #01376F;
+}
+.btn-edit:hover { background: #041642; border-color: #041642; }
+
+.btn-settings {
+  background: #465A71;
+  color: var(--xanz-surf-mist);
+  border: 1px solid #465A71;
+}
+.btn-settings:hover { background: #39495C; border-color: #39495C; }
+
+.btn-admin {
+  background: #5B4A3A;
+  color: var(--xanz-surf-mist);
+  border: 1px solid #5B4A3A;
+}
+.btn-admin:hover { background: #47392D; border-color: #47392D; }
+
+.btn-warning {
+  background: #A06A1C;
+  color: var(--xanz-surf-mist);
+  border: 1px solid #A06A1C;
+}
+.btn-warning:hover { background: #835617; border-color: #835617; }
+
+.btn-delete {
+  background: #8B2E2E;
+  color: var(--xanz-surf-mist);
+  border: 1px solid #8B2E2E;
+}
+.btn-delete:hover { background: #6F2323; border-color: #6F2323; }
+
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.btn-edit:focus-visible,
+.btn-settings:focus-visible,
+.btn-admin:focus-visible,
+.btn-warning:focus-visible,
+.btn-delete:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 28%, transparent);
+  outline-offset: 2px;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-edit:disabled,
+.btn-settings:disabled,
+.btn-admin:disabled,
+.btn-warning:disabled,
+.btn-delete:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  box-shadow: none;
+}
