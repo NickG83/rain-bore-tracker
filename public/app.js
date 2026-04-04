@@ -140,8 +140,8 @@ function renderTable(entries) {
       <td class="num">${e.bore_litres ? formatIntWithCommas(e.bore_litres) : ""}</td>
       <td>${e.notes ?? ""}</td>
       <td>
-        <button type="button" data-action="edit">Edit</button>
-        <button type="button" data-action="delete">Delete</button>
+        <button type="button" class="btn-edit" data-action="edit">Edit</button>
+        <button type="button" class="btn-delete" data-action="delete">Delete</button>
       </td>
     `;
     body.appendChild(tr);
