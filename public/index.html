@@ -62,6 +62,7 @@
       font-weight: 700;
       font-size: 0.9rem;
     }
+    .mobile-date, .metric-label { display: none; }
     td.num, th.num { text-align: right; }
     .brand-header {
       background: linear-gradient(130deg, rgba(1,55,111,0.97) 0%, rgba(4,22,66,0.97) 100%);
@@ -174,6 +175,86 @@
     }
     @media (max-width: 640px) {
       .tiles { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      #entries_body tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px 10px;
+        padding: 10px;
+        margin-bottom: 8px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+      }
+      #entries_body td {
+        border-bottom: 0;
+        padding: 0;
+        min-width: 0;
+      }
+      #entries_body td.entry-date {
+        grid-column: 1 / 2;
+        display: flex;
+        align-items: center;
+      }
+      #entries_body td.entry-actions {
+        grid-column: 2 / 3;
+        display: flex;
+        justify-content: flex-end;
+        gap: 6px;
+      }
+      #entries_body td.metric-cell {
+        grid-column: 1 / -1;
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        margin-right: 12px;
+      }
+      #entries_body td.notes-cell {
+        grid-column: 1 / -1;
+        color: var(--text-muted);
+        font-size: 0.88rem;
+        line-height: 1.35;
+      }
+      #entries_body td.is-empty {
+        display: none !important;
+      }
+      #entries_body tr.no-entries-row {
+        display: table-row;
+      }
+      #entries_body tr.no-entries-row td {
+        padding: 10px 0;
+      }
+      #entries_body .desktop-date { display: none; }
+      #entries_body .mobile-date {
+        display: inline;
+        font-size: 0.89rem;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      #entries_body .metric-label {
+        display: inline;
+        font-size: 0.76rem;
+        color: var(--text-muted);
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+      #entries_body .metric-value {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text);
+      }
+      #entries_body .btn-edit,
+      #entries_body .btn-delete {
+        font-size: 0.78rem;
+        line-height: 1.1;
+        padding: 6px 8px;
+        min-height: 32px;
+      }
+      table thead {
+        display: none;
+      }
     }
   </style>
 </head>

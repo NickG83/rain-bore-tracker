@@ -66,6 +66,18 @@ function formatKLFromLitres(litres) {
   return (Number.isInteger(kL) ? kL.toString() : kL.toFixed(1)) + " kL";
 }
 
+function formatDateForMobile(dateStr) {
+  if (!dateStr) return "";
+  const [y, m, d] = String(dateStr).split("-").map(Number);
+  if (!y || !m || !d) return dateStr;
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 async function fetchJson(url, opts) {
   const res = await fetch(url, opts);
   const text = await res.text();
@@ -133,13 +145,26 @@ function renderTable(entries) {
   entries.slice(0, 50).forEach((e) => {
     const tr = document.createElement("tr");
     tr.dataset.id = e.id;
+    const hasRain = e.rain_mm !== null && e.rain_mm !== undefined && String(e.rain_mm).trim() !== "";
+    const hasBore = e.bore_litres !== null && e.bore_litres !== undefined && String(e.bore_litres).trim() !== "";
+    const hasNotes = Boolean((e.notes ?? "").trim());
+    const mobileDate = formatDateForMobile(e.entry_date);
 
     tr.innerHTML = `
-      <td>${e.entry_date}</td>
-      <td class="num">${e.rain_mm ?? ""}</td>
-      <td class="num">${e.bore_litres ? formatIntWithCommas(e.bore_litres) : ""}</td>
-      <td>${e.notes ?? ""}</td>
-      <td>
+      <td class="entry-date">
+        <span class="desktop-date">${e.entry_date}</span>
+        <span class="mobile-date">${mobileDate}</span>
+      </td>
+      <td class="num metric-cell ${hasRain ? "" : "is-empty"}">
+        <span class="metric-label">Rain</span>
+        <span class="metric-value">${hasRain ? e.rain_mm : ""}</span>
+      </td>
+      <td class="num metric-cell ${hasBore ? "" : "is-empty"}">
+        <span class="metric-label">Bore</span>
+        <span class="metric-value">${hasBore ? formatIntWithCommas(e.bore_litres) : ""}</span>
+      </td>
+      <td class="notes-cell ${hasNotes ? "" : "is-empty"}">${e.notes ?? ""}</td>
+      <td class="entry-actions">
         <button type="button" class="btn-edit" data-action="edit">Edit</button>
         <button type="button" class="btn-delete" data-action="delete">Delete</button>
       </td>
@@ -149,6 +174,7 @@ function renderTable(entries) {
 
   if (entries.length === 0) {
     const tr = document.createElement("tr");
+    tr.className = "no-entries-row";
     tr.innerHTML = `<td colspan="5">No entries yet.</td>`;
     body.appendChild(tr);
   }
