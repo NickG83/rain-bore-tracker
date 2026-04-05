@@ -146,6 +146,9 @@ td {
 .btn-admin,
 .btn-warning,
 .btn-delete {
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-text-fill-color: currentColor;
   font-family: var(--font-ui);
   display: inline-flex;
   align-items: center;
